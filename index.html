@@ -182,10 +182,14 @@
 <div class="overlay" id="sessionOverlay">
   <div class="modal">
     <h3>새 차시</h3>
-    <p class="modal-sub">제목만 입력하세요. 세부 계획은 삼성노트에서 작성하시면 돼요.</p>
+    <p class="modal-sub">제목과 준비물만 입력하세요. 세부 계획은 삼성노트에서 작성하시면 돼요.</p>
     <div class="field">
       <label>차시명</label>
       <input type="text" id="fTitle" placeholder="예: 1차시 - 오리엔테이션">
+    </div>
+    <div class="field">
+      <label>준비물</label>
+      <input type="text" id="fMaterials" placeholder="예: 점프밴드 5개, 노트북, 블루투스 스피커">
     </div>
     <div class="modal-actions">
       <div></div>
@@ -199,7 +203,14 @@
 
 <div class="overlay" id="rollupOverlay">
   <div class="modal">
-    <h3 id="rollupHeading">차시 총평</h3>
+    <div class="field" style="margin-bottom:10px;">
+      <label>차시명</label>
+      <input type="text" id="rollupTitleInput">
+    </div>
+    <div class="field">
+      <label>준비물</label>
+      <input type="text" id="rollupMaterialsInput" placeholder="예: 점프밴드 5개, 노트북">
+    </div>
     <p class="modal-sub">학급을 클릭하면 그 학급 피드백을 바로 수정할 수 있어요.</p>
     <div id="rollupList"></div>
     <div class="modal-actions">
@@ -499,6 +510,7 @@ function renderTable(){
     html += "<tr>";
     html += `<td class="title-cell" data-session="${s.id}">
       <div class="plan-title">${escapeHtml(s.title)}</div>
+      ${s.materials ? `<div class="fb-summary-hint">🎒 ${escapeHtml(s.materials)}</div>` : ""}
       <div class="fb-summary-hint">${fbCount ? "피드백 " + fbCount + "/" + yr.classes.length : "피드백 없음"}</div>
     </td>`;
     yr.classes.forEach(c=>{
@@ -546,17 +558,19 @@ async function updateSessionField(sessionId, path, value){
 /* ---------- 새 차시 ---------- */
 document.getElementById("addSessionBtn").onclick = ()=>{
   document.getElementById("fTitle").value = "";
+  document.getElementById("fMaterials").value = "";
   document.getElementById("sessionOverlay").classList.add("show");
 };
 document.getElementById("sessionCancelBtn").onclick = ()=> document.getElementById("sessionOverlay").classList.remove("show");
 document.getElementById("sessionSaveBtn").onclick = async ()=>{
   const title = document.getElementById("fTitle").value.trim();
   if(!title){ showToast("차시명을 입력해주세요"); return; }
+  const materials = document.getElementById("fMaterials").value.trim();
   const yr = getCurrentYear();
   const perClass = {};
   yr.classes.forEach(c=> perClass[c] = {done:false, date:"", feedback: emptyFeedback()});
   await addDoc(collection(db,"units",currentUnitId,"years",currentYearId,"sessions"), {
-    title, order: Date.now(), perClass
+    title, materials, order: Date.now(), perClass
   });
   document.getElementById("sessionOverlay").classList.remove("show");
   showToast("차시가 추가됐어요 — 모든 학급에 적용됐어요");
@@ -567,7 +581,20 @@ function openRollup(sessionId){
   openSessionId = sessionId;
   const yr = getCurrentYear();
   const s = sessions.find(x=>x.id===sessionId);
-  document.getElementById("rollupHeading").textContent = s.title;
+
+  const titleInput = document.getElementById("rollupTitleInput");
+  const materialsInput = document.getElementById("rollupMaterialsInput");
+  titleInput.value = s.title || "";
+  materialsInput.value = s.materials || "";
+  titleInput.onblur = ()=>{
+    const v = titleInput.value.trim();
+    if(v && v !== s.title) updateSessionField(sessionId, "title", v);
+  };
+  materialsInput.onblur = ()=>{
+    const v = materialsInput.value.trim();
+    if(v !== (s.materials||"")) updateSessionField(sessionId, "materials", v);
+  };
+
   const list = document.getElementById("rollupList");
   list.innerHTML = yr.classes.map(c=>{
     const pc = (s.perClass && s.perClass[c]) || {done:false,date:"",feedback:emptyFeedback()};
