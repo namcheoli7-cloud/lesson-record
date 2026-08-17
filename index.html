@@ -74,7 +74,16 @@
 
   .corner{position:sticky; left:0; z-index:3; background:var(--card); min-width:160px; max-width:160px;}
   .class-head{padding:9px 4px; text-align:center; font-weight:700; font-size:13px;}
-  .subhead{padding:6px 6px; text-align:center; font-size:11px; color:var(--sub); font-weight:600; min-width:96px;}
+  .subhead-done{padding:6px 2px; text-align:center; font-size:11px; color:var(--sub); font-weight:600; width:36px;}
+  .subhead-date{padding:6px 4px; text-align:center; font-size:11px; color:var(--sub); font-weight:600; width:82px;}
+
+  td.done-cell{text-align:center; padding:8px 2px; width:36px;}
+  td.date-cell{padding:3px 3px; width:82px;}
+  .date-row{display:flex; align-items:center; justify-content:center; gap:2px; position:relative;}
+  .date-display{cursor:pointer; font-size:11.5px; padding:3px 3px; border-radius:5px; min-width:38px; text-align:center;}
+  .date-display:hover{background:var(--accent-light);}
+  .date-display.empty{color:#c7cbd1;}
+  input.date-native{position:absolute; opacity:0; width:1px; height:1px; pointer-events:none; left:0; top:0;}
 
   td.title-cell{
     position:sticky; left:0; z-index:2; background:var(--card); cursor:pointer;
@@ -84,12 +93,7 @@
   .plan-title{font-weight:700; font-size:13.5px;}
   .fb-summary-hint{color:var(--sub); font-size:11px; margin-top:3px;}
 
-  td.done-cell{text-align:center; padding:10px 4px;}
-  td.date-cell{padding:5px 6px;}
-  .date-row{display:flex; align-items:center; gap:4px;}
   input[type="checkbox"]{width:17px; height:17px; cursor:pointer; accent-color:var(--accent);}
-  input[type="date"]{border:none; font-size:12px; flex:1; min-width:0; background:transparent; font-family:inherit; color:inherit;}
-  input[type="date"]:focus{outline:1px solid var(--accent); border-radius:4px;}
   .fb-btn{
     border:none; background:transparent; cursor:pointer; font-size:14px; padding:2px 4px; border-radius:5px; opacity:.35;
   }
@@ -367,6 +371,13 @@ let openFbClass = null;
 
 function emptyFeedback(){ return {good:"", bad:"", fix:""}; }
 function escapeHtml(str){ const d=document.createElement("div"); d.textContent=str||""; return d.innerHTML; }
+function formatShortDate(dateStr){
+  if(!dateStr) return "날짜";
+  const [y,m,d] = dateStr.split("-").map(Number);
+  const dt = new Date(y, m-1, d);
+  const wd = ["일","월","화","수","목","금","토"][dt.getDay()];
+  return `${m}/${d}(${wd})`;
+}
 function showToast(msg){
   const t = document.getElementById("toast");
   t.textContent = msg; t.classList.add("show");
@@ -499,7 +510,7 @@ function renderTable(){
     html += `<th class="class-head" colspan="2" style="background:var(--${key});color:var(--${key}d)">${escapeHtml(c)}</th>`;
   });
   html += "</tr><tr>";
-  yr.classes.forEach(()=>{ html += `<th class="subhead">완료</th><th class="subhead">날짜 · 피드백</th>`; });
+  yr.classes.forEach(()=>{ html += `<th class="subhead-done">완료</th><th class="subhead-date">날짜</th>`; });
   html += "</tr></thead><tbody>";
 
   sessions.forEach(s=>{
@@ -519,7 +530,8 @@ function renderTable(){
       html += `<td class="done-cell"><input type="checkbox" data-session="${s.id}" data-class="${c}" ${pc.done?"checked":""}></td>`;
       html += `<td class="date-cell">
         <div class="date-row">
-          <input type="date" value="${pc.date||""}" data-session="${s.id}" data-class="${c}">
+          <span class="date-display ${pc.date?"":"empty"}" data-session="${s.id}" data-class="${c}">${formatShortDate(pc.date)}</span>
+          <input type="date" class="date-native" value="${pc.date||""}" data-session="${s.id}" data-class="${c}">
           <button class="fb-btn ${hasFb?"has-content":""}" data-session="${s.id}" data-class="${c}" title="학급 피드백">💬</button>
         </div>
       </td>`;
@@ -534,8 +546,19 @@ function renderTable(){
   table.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
     cb.onchange = ()=> updateSessionField(cb.dataset.session, `perClass.${cb.dataset.class}.done`, cb.checked);
   });
-  table.querySelectorAll('input[type="date"]').forEach(inp=>{
-    inp.onchange = ()=> updateSessionField(inp.dataset.session, `perClass.${inp.dataset.class}.date`, inp.value);
+  table.querySelectorAll('.date-display').forEach(span=>{
+    span.onclick = ()=>{
+      const inp = span.nextElementSibling;
+      if(inp.showPicker) inp.showPicker(); else inp.focus();
+    };
+  });
+  table.querySelectorAll('input.date-native').forEach(inp=>{
+    inp.onchange = ()=>{
+      updateSessionField(inp.dataset.session, `perClass.${inp.dataset.class}.date`, inp.value);
+      const span = inp.previousElementSibling;
+      span.textContent = formatShortDate(inp.value);
+      span.classList.toggle("empty", !inp.value);
+    };
   });
   table.querySelectorAll('.fb-btn').forEach(btn=>{
     btn.onclick = ()=> openFeedbackModal(btn.dataset.session, btn.dataset.class);
