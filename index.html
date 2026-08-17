@@ -25,7 +25,7 @@
   }
   .wrap{max-width:1240px; margin:0 auto;}
   .headrow{display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:22px;}
-  h1{font-size:27px; font-weight:800; margin:0 0 5px; letter-spacing:-.02em;}
+  h1{font-size:38px; font-weight:800; margin:0 0 8px; letter-spacing:-.02em;}
   .subtitle{color:var(--sub); font-size:13.5px; font-weight:600; margin:0;}
   .sync-dot{display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--good); margin-right:6px; box-shadow:0 0 0 3px rgba(74,222,128,.18);}
   .sync-dot.off{background:var(--danger); box-shadow:0 0 0 3px rgba(243,105,95,.18);}
@@ -137,6 +137,7 @@
   .field-good label{color:var(--good);}
   .field-bad label{color:var(--bad);}
   .field-fix label{color:var(--fix);}
+  .field-etc label{color:var(--sub);}
   .modal-actions{display:flex; justify-content:space-between; margin-top:20px; gap:8px;}
   .modal-actions-right{display:flex; gap:8px;}
   .btn-danger{background:transparent; color:var(--danger); border:1.5px solid var(--danger); font-weight:800; padding:10px 16px; border-radius:9px; cursor:pointer; font-size:14px;}
@@ -183,13 +184,9 @@
   <div class="headrow">
     <div>
       <h1>수업 기록장</h1>
-      <p class="subtitle">언제 할지 · 언제 했는지만 여기서 계획하고 기록해요. 세부 계획은 삼성노트, 사진·후기는 네이버 블로그.</p>
       <p class="sync-status"><span class="sync-dot" id="syncDot"></span><span id="syncText">연결 중...</span></p>
     </div>
-    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-      <button class="idea-trigger" id="notesTriggerBtn" title="안드로이드에서만 작동해요">📓 삼성노트 열기</button>
-      <button class="idea-trigger" id="ideaTriggerBtn">💡 수업 아이디어</button>
-    </div>
+    <button class="idea-trigger" id="ideaTriggerBtn">💡 수업 아이디어</button>
   </div>
 
   <div class="tabs" id="tabs"></div>
@@ -268,6 +265,10 @@
     <div class="field field-fix">
       <label>수정사항</label>
       <textarea id="fFix" placeholder="다음 차시나 다음 학기에 고칠 점"></textarea>
+    </div>
+    <div class="field field-etc">
+      <label>기타</label>
+      <textarea id="fEtc" placeholder="특이사항 (안전사고, 결석, 개별 학생 특이사항 등)"></textarea>
     </div>
     <div class="modal-actions">
       <div></div>
@@ -416,7 +417,7 @@ let openSessionId = null;
 let openFbSession = null;
 let openFbClass = null;
 
-function emptyFeedback(){ return {good:"", bad:"", fix:""}; }
+function emptyFeedback(){ return {good:"", bad:"", fix:"", etc:""}; }
 function escapeHtml(str){ const d=document.createElement("div"); d.textContent=str||""; return d.innerHTML; }
 function formatShortDate(dateStr){
   if(!dateStr) return "날짜";
@@ -716,7 +717,7 @@ document.getElementById("sessionSaveBtn").onclick = async ()=>{
 document.getElementById("scheduleBtn").onclick = ()=>{
   const yr = getCurrentYear();
   if(!yr){ showToast("먼저 종목과 연도를 선택해주세요"); return; }
-  const dayDefs = [["월",1],["화",2],["수",3],["목",4],["금",5],["토",6],["일",0]];
+  const dayDefs = [["월",1],["화",2],["수",3],["목",4],["금",5]];
   const list = document.getElementById("scheduleList");
   list.innerHTML = yr.classes.map(c=>{
     const active = (yr.schedule && yr.schedule[c]) || [];
@@ -807,6 +808,7 @@ function openFeedbackModal(sessionId, className){
   document.getElementById("fGood").value = pc.feedback.good || "";
   document.getElementById("fBad").value = pc.feedback.bad || "";
   document.getElementById("fFix").value = pc.feedback.fix || "";
+  document.getElementById("fEtc").value = pc.feedback.etc || "";
   document.getElementById("fbOverlay").classList.add("show");
 }
 document.getElementById("fbCancelBtn").onclick = ()=> document.getElementById("fbOverlay").classList.remove("show");
@@ -814,7 +816,8 @@ document.getElementById("fbSaveBtn").onclick = async ()=>{
   const feedback = {
     good: document.getElementById("fGood").value.trim(),
     bad: document.getElementById("fBad").value.trim(),
-    fix: document.getElementById("fFix").value.trim()
+    fix: document.getElementById("fFix").value.trim(),
+    etc: document.getElementById("fEtc").value.trim()
   };
   await updateSessionField(openFbSession, `perClass.${openFbClass}.feedback`, feedback);
   document.getElementById("fbOverlay").classList.remove("show");
@@ -852,10 +855,6 @@ document.getElementById("yearSaveBtn").onclick = async ()=>{
 };
 
 /* ---------- 수업 아이디어 ---------- */
-document.getElementById("notesTriggerBtn").onclick = ()=>{
-  window.location.href = "intent://#Intent;package=com.samsung.android.app.notes;launchFlags=0x10000000;end";
-  setTimeout(()=> showToast("반응이 없으면 안드로이드 기기가 아니거나 삼성노트가 없는 거예요"), 700);
-};
 document.getElementById("ideaTriggerBtn").onclick = ()=>{
   const dl = document.getElementById("unitNames");
   dl.innerHTML = units.map(u=>`<option value="${escapeHtml(u.name)}">`).join("");
