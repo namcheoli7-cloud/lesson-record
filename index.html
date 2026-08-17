@@ -427,6 +427,31 @@ function nextScheduledDate(className, yr){
   }
   return "";
 }
+function nextScheduledAfter(afterDateStr, days){
+  if(!days || !days.length) return "";
+  const [y,m,d] = afterDateStr.split("-").map(Number);
+  let cur = new Date(y, m-1, d);
+  cur.setDate(cur.getDate()+1);
+  for(let i=0;i<60;i++){
+    if(days.includes(cur.getDay())) return toISODate(cur);
+    cur.setDate(cur.getDate()+1);
+  }
+  return "";
+}
+async function cascadeRecalc(className, fromSessionId, newDate){
+  const yr = getCurrentYear();
+  const days = (yr.schedule && yr.schedule[className]) || [];
+  if(!days.length) return;
+  const idx = sessions.findIndex(s=>s.id===fromSessionId);
+  if(idx===-1) return;
+  let cursor = newDate;
+  for(let i=idx+1; i<sessions.length; i++){
+    const next = nextScheduledAfter(cursor, days);
+    if(!next) break;
+    await updateSessionField(sessions[i].id, `perClass.${className}.date`, next);
+    cursor = next;
+  }
+}
 function showToast(msg){
   const t = document.getElementById("toast");
   t.textContent = msg; t.classList.add("show");
@@ -602,11 +627,23 @@ function renderTable(){
     };
   });
   table.querySelectorAll('input.date-native').forEach(inp=>{
-    inp.onchange = ()=>{
-      updateSessionField(inp.dataset.session, `perClass.${inp.dataset.class}.date`, inp.value);
+    inp.onchange = async ()=>{
+      const sessionId = inp.dataset.session, className = inp.dataset.class, newDate = inp.value;
+      await updateSessionField(sessionId, `perClass.${className}.date`, newDate);
       const span = inp.previousElementSibling;
-      span.textContent = formatShortDate(inp.value);
-      span.classList.toggle("empty", !inp.value);
+      span.textContent = formatShortDate(newDate);
+      span.classList.toggle("empty", !newDate);
+
+      const yr = getCurrentYear();
+      const days = (yr.schedule && yr.schedule[className]) || [];
+      const idx = sessions.findIndex(s=>s.id===sessionId);
+      const hasLater = idx > -1 && idx < sessions.length-1;
+      if(newDate && days.length && hasLater){
+        if(confirm(`이후 ${className} 차시 날짜도 요일 설정(${["일","월","화","수","목","금","토"].filter((_,i)=>days.includes(i)).join("·")})에 맞춰 자동으로 다시 계산할까요?`)){
+          await cascadeRecalc(className, sessionId, newDate);
+          showToast("이후 차시 날짜를 다시 계산했어요");
+        }
+      }
     };
   });
   table.querySelectorAll('.fb-btn').forEach(btn=>{
