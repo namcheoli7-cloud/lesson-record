@@ -176,7 +176,10 @@
 
   <div class="toolbar">
     <div class="toolbar-left" id="toolbarInfo"></div>
-    <button class="btn" id="addSessionBtn">+ 새 차시 추가</button>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-cancel" id="scheduleBtn">📅 요일 설정</button>
+      <button class="btn" id="addSessionBtn">+ 새 차시 추가</button>
+    </div>
   </div>
 
   <div class="grid-outer">
@@ -299,6 +302,21 @@
   </div>
 </div>
 
+<div class="overlay" id="scheduleOverlay">
+  <div class="modal">
+    <h3>요일 설정</h3>
+    <p class="modal-sub">학급마다 매주 수업 있는 요일을 체크해두면, 새 차시를 추가할 때 날짜가 자동으로 채워져요. 시간표가 바뀌거나 특정 차시만 다르면 표에서 그 학급 날짜만 따로 클릭해서 고치면 돼요.</p>
+    <div id="scheduleList"></div>
+    <div class="modal-actions">
+      <div></div>
+      <div class="modal-actions-right">
+        <button class="btn btn-cancel" id="scheduleCancelBtn">취소</button>
+        <button class="btn" id="scheduleSaveBtn">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="ideaOverlay">
   <div class="modal">
     <h3>수업 아이디어</h3>
@@ -378,6 +396,36 @@ function formatShortDate(dateStr){
   const dt = new Date(y, m-1, d);
   const wd = ["일","월","화","수","목","금","토"][dt.getDay()];
   return `${m}/${d}(${wd})`;
+}
+function toISODate(dt){
+  const y=dt.getFullYear(), m=String(dt.getMonth()+1).padStart(2,"0"), d=String(dt.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
+function getLatestClassDate(className){
+  let latest = null;
+  sessions.forEach(s=>{
+    const d = s.perClass && s.perClass[className] && s.perClass[className].date;
+    if(d && (!latest || d > latest)) latest = d;
+  });
+  return latest;
+}
+function nextScheduledDate(className, yr){
+  const days = (yr.schedule && yr.schedule[className]) || [];
+  if(!days.length) return "";
+  const latest = getLatestClassDate(className);
+  let cur;
+  if(latest){
+    const [y,m,d] = latest.split("-").map(Number);
+    cur = new Date(y, m-1, d);
+    cur.setDate(cur.getDate()+1);
+  }else{
+    cur = new Date();
+  }
+  for(let i=0;i<60;i++){
+    if(days.includes(cur.getDay())) return toISODate(cur);
+    cur.setDate(cur.getDate()+1);
+  }
+  return "";
 }
 function showToast(msg){
   const t = document.getElementById("toast");
@@ -592,12 +640,46 @@ document.getElementById("sessionSaveBtn").onclick = async ()=>{
   const materials = document.getElementById("fMaterials").value.trim();
   const yr = getCurrentYear();
   const perClass = {};
-  yr.classes.forEach(c=> perClass[c] = {done:false, date:"", feedback: emptyFeedback()});
+  yr.classes.forEach(c=> perClass[c] = {done:false, date: nextScheduledDate(c, yr), feedback: emptyFeedback()});
   await addDoc(collection(db,"units",currentUnitId,"years",currentYearId,"sessions"), {
     title, materials, order: Date.now(), perClass
   });
   document.getElementById("sessionOverlay").classList.remove("show");
-  showToast("차시가 추가됐어요 — 모든 학급에 적용됐어요");
+  showToast("차시가 추가됐어요 — 요일 설정에 맞춰 날짜도 자동으로 채웠어요");
+};
+
+/* ---------- 요일 설정 ---------- */
+document.getElementById("scheduleBtn").onclick = ()=>{
+  const yr = getCurrentYear();
+  if(!yr){ showToast("먼저 종목과 연도를 선택해주세요"); return; }
+  const dayDefs = [["월",1],["화",2],["수",3],["목",4],["금",5],["토",6],["일",0]];
+  const list = document.getElementById("scheduleList");
+  list.innerHTML = yr.classes.map(c=>{
+    const active = (yr.schedule && yr.schedule[c]) || [];
+    return `<div class="field">
+      <label>${escapeHtml(c)}</label>
+      <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        ${dayDefs.map(([lbl,num])=>`
+          <label style="display:flex; align-items:center; gap:4px; font-size:12.5px; cursor:pointer;">
+            <input type="checkbox" class="sched-chk" data-class="${c}" data-day="${num}" ${active.includes(num)?"checked":""}>${lbl}
+          </label>
+        `).join("")}
+      </div>
+    </div>`;
+  }).join("");
+  document.getElementById("scheduleOverlay").classList.add("show");
+};
+document.getElementById("scheduleCancelBtn").onclick = ()=> document.getElementById("scheduleOverlay").classList.remove("show");
+document.getElementById("scheduleSaveBtn").onclick = async ()=>{
+  const yr = getCurrentYear();
+  const schedule = {};
+  yr.classes.forEach(c=> schedule[c] = []);
+  document.querySelectorAll(".sched-chk").forEach(chk=>{
+    if(chk.checked) schedule[chk.dataset.class].push(Number(chk.dataset.day));
+  });
+  await updateDoc(doc(db,"units",currentUnitId,"years",currentYearId), {schedule});
+  document.getElementById("scheduleOverlay").classList.remove("show");
+  showToast("요일 설정이 저장됐어요");
 };
 
 /* ---------- 차시 총평 ---------- */
