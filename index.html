@@ -482,7 +482,7 @@ function renderTable(){
     return;
   }
 
-  let html = "<thead><tr><th class=\\"corner\\" rowspan=\\"2\\">차시</th>";
+  let html = `<thead><tr><th class="corner" rowspan="2">차시</th>`;
   yr.classes.forEach((c,i)=>{
     const key = CLASS_COLORS[i % CLASS_COLORS.length];
     html += `<th class="class-head" colspan="2" style="background:var(--${key});color:var(--${key}d)">${escapeHtml(c)}</th>`;
