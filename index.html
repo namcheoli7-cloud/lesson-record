@@ -186,7 +186,10 @@
       <p class="subtitle">언제 할지 · 언제 했는지만 여기서 계획하고 기록해요. 세부 계획은 삼성노트, 사진·후기는 네이버 블로그.</p>
       <p class="sync-status"><span class="sync-dot" id="syncDot"></span><span id="syncText">연결 중...</span></p>
     </div>
-    <button class="idea-trigger" id="ideaTriggerBtn">💡 수업 아이디어</button>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+      <button class="idea-trigger" id="notesTriggerBtn" title="안드로이드에서만 작동해요">📓 삼성노트 열기</button>
+      <button class="idea-trigger" id="ideaTriggerBtn">💡 수업 아이디어</button>
+    </div>
   </div>
 
   <div class="tabs" id="tabs"></div>
@@ -849,6 +852,10 @@ document.getElementById("yearSaveBtn").onclick = async ()=>{
 };
 
 /* ---------- 수업 아이디어 ---------- */
+document.getElementById("notesTriggerBtn").onclick = ()=>{
+  window.location.href = "intent://#Intent;package=com.samsung.android.app.notes;launchFlags=0x10000000;end";
+  setTimeout(()=> showToast("반응이 없으면 안드로이드 기기가 아니거나 삼성노트가 없는 거예요"), 700);
+};
 document.getElementById("ideaTriggerBtn").onclick = ()=>{
   const dl = document.getElementById("unitNames");
   dl.innerHTML = units.map(u=>`<option value="${escapeHtml(u.name)}">`).join("");
