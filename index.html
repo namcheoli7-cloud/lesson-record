@@ -322,12 +322,12 @@ import {
    ⬇️ 본인 Firebase 프로젝트 설정 (Firebase 콘솔 > 프로젝트 설정 > 내 앱)
    ===================================================================== */
 const firebaseConfig = {
-  apiKey: "AIzaSyBh_cT9NMr942_eFiFpp_m_f0TouyJGzqI",
-  authDomain: "group-game-92263.firebaseapp.com",
-  projectId: "group-game-92263",
-  storageBucket: "group-game-92263.firebasestorage.app",
-  messagingSenderId: "116789155975",
-  appId: "1:116789155975:web:fd303ce653b27dcee90022"
+  apiKey: "AIzaSyB8_ABUYRet6Qb1jlcjYGPYRSXJ4MCnRc4",
+  authDomain: "dodgeball-efbff.firebaseapp.com",
+  projectId: "dodgeball-efbff",
+  storageBucket: "dodgeball-efbff.firebasestorage.app",
+  messagingSenderId: "375748754364",
+  appId: "1:375748754364:web:2a49b5137784a68c6f89b9"
 };
 
 /* ===================================================================== */
@@ -336,7 +336,7 @@ const isConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
 if(!isConfigured) document.getElementById("setupBanner").style.display = "block";
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = getFirestore(app, "lessonrecord");
 
 const CLASS_COLORS = ["c21","c22","c23","c24","c210","c21","c22","c23","c24","c210"];
 
